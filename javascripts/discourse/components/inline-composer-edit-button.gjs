@@ -13,8 +13,6 @@ export default class InlineComposerEditButton extends Component {
       if (this.inlineComposer.editingPostId !== this.args.post.id) {
         this.inlineComposer.stopEditing(this.inlineComposer.editingPostId);
         this.inlineComposer.startEditing(this.args.post.id);
-      } else {
-        this.inlineComposer.stopEditing(this.inlineComposer.editingPostId);
       }
     } else {
       this.inlineComposer.startEditing(this.args.post.id);
