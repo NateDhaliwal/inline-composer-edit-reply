@@ -1,0 +1,6 @@
+en:
+  theme_metadata:
+    description: Edit a post without having the full composer open, instead having
+      the composer appearing lineline in the post.
+    settings:
+      example_setting: A description of a setting.
