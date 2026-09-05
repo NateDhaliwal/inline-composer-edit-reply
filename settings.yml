@@ -1,2 +1,2 @@
-example_setting:
-  default: true
+show_preview:
+  default: false
