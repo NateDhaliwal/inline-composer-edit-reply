@@ -1,5 +1,4 @@
 import { tracked } from "@glimmer/tracking";
-import { cancel } from "@ember/runloop";
 import Service, { service } from "@ember/service";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";

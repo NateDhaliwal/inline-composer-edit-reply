@@ -8,10 +8,9 @@ import Form from "discourse/components/form";
 import DiscardDraftModal from "discourse/components/modal/discard-draft";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
-import { and, eq, not } from "discourse/truth-helpers";
+import { eq } from "discourse/truth-helpers";
 import DButton from "discourse/ui-kit/d-button";
 import { DConditionalLoadingSpinner } from "discourse/ui-kit/d-conditional-loading-spinner";
-import { isundefnull } from "../helpers/is-undefined-or-null";
 
 export default class InlineComposer extends Component {
   @service inlineComposer;
