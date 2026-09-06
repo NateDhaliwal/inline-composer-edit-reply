@@ -1,1 +1,9 @@
 // Theme's SCSS
+.button-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.discard-button:hover {
+  color: var(--danger) !important;
+}
