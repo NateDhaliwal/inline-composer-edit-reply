@@ -131,19 +131,21 @@ export default class InlineComposer extends Component {
             @onRegisterApi={{this.registerAPI}}
             as |form|
           >
-            <form.Field
-              @name="content"
-              @validation="required"
-              @title="&nbsp;"
-              @type="composer"
-              @onSet={{this.onContentSet}}
-              as |field|
-            >
-              <field.Control @preview={{settings.show_preview}} />
-            </form.Field>
+            <div class="inline-editor">
+              <form.Field
+                @name="content"
+                @validation="required"
+                @title="&nbsp;"
+                @type="composer"
+                @onSet={{this.onContentSet}}
+                as |field|
+              >
+                <field.Control @preview={{settings.show_preview}} />
+              </form.Field>
+            </div>
 
             <div class="button-row">
-              <form.Submit @label={{themePrefix "composer_edit_text"}} />
+              <form.Submit @icon="pencil" @label="composer.save_edit" />
               <DButton
                 @action={{this.cancelComposer}}
                 class="discard-button btn-transparent"

@@ -7,3 +7,8 @@
 .discard-button:hover {
   color: var(--danger) !important;
 }
+
+.inline-editor,
+.inline-editor > #control-content > .form-kit__container-content {
+  width: stretch;
+}
