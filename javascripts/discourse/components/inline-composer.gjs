@@ -1,6 +1,7 @@
 import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
 import { hash } from "@ember/helper";
+import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import didInsert from "@ember/render-modifiers/modifiers/did-insert";
 import { cancel, debounce } from "@ember/runloop";
@@ -121,13 +122,11 @@ export default class InlineComposer extends Component {
   }
 
   @action
-  addKeyboardShortcut() {
-    const editorElement = document.getElementById("inline-editor");
-    editorElement.addEventListener("keydown", (event) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-        this.formApi.submit();
-      }
-    });
+  handleKeyDown(event) {
+    event.preventDefault();
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+      this.formApi.submit();
+    }
   }
 
   <template>
@@ -144,13 +143,14 @@ export default class InlineComposer extends Component {
             @onRegisterApi={{this.registerAPI}}
             as |form|
           >
-            <div id="inline-editor" {{didInsert this.addKeyboardShortcut}}>
+            <div id="inline-editor">
               <form.Field
                 @name="content"
                 @validation="required"
                 @title="&nbsp;"
                 @type="composer"
                 @onSet={{this.onContentSet}}
+                {{on "keydown" this.handleKeyDown}}
                 as |field|
               >
                 <field.Control @preview={{settings.show_preview}} />
