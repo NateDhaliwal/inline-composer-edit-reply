@@ -2,6 +2,7 @@ import Component from "@glimmer/component";
 import { action } from "@ember/object";
 import { service } from "@ember/service";
 import DButton from "discourse/ui-kit/d-button";
+import dConcatClass from "discourse/ui-kit/helpers/d-concat-class";
 
 export default class InlineComposerEditButton extends Component {
   @service inlineComposer;
@@ -21,9 +22,16 @@ export default class InlineComposerEditButton extends Component {
 
   <template>
     <DButton
-      class="btn-icon btn-flat edit"
-      @icon="pencil"
+      class={{dConcatClass
+        "post-action-menu__edit"
+        "edit"
+        (if @post.wiki "create" "btn-flat")
+      }}
+      @icon={{if @post.wiki "far-pen-to-square" "pencil"}}
       @action={{this.toggleComposer}}
+      @label={{if @post.wiki "post.controls.edit_action"}}
+      @title="post.controls.edit"
+      @ariaLabel="post.controls.edit"
     />
   </template>
 }

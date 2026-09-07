@@ -174,7 +174,6 @@ export default class InlineComposer extends Component {
                   {{on "keydown" this.handleKeyDown}}
                   as |field|
                 >
-                  {{log this.height}}
                   <field.Control
                     @height={{this.height}}
                     @preview={{settings.show_preview}}
