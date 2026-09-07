@@ -139,15 +139,16 @@ export default class InlineComposerService extends Service {
     const data = {
       reply: value,
       action: "edit_post",
-      original_title: post.topic.title,
+      title: post.topic.title,
       original_text: this.composerContent,
       postId: post.id,
       categoryId: post.topic.category_id,
       tags: post.topic.tags,
-      archetype: "regular",
+      archetypeId: "regular",
       slug: post.topic.slug,
       topicId: post.topic_id,
     };
+
     try {
       await Draft.save(
         this.draftKey,
