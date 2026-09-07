@@ -200,12 +200,13 @@ export default class InlineComposerService extends Service {
                 class: "btn-default",
                 action: () => {
                   this.draftForceSave = true;
-                  this.saveDraft(value, post, showToast); // Force retry
+                  this.saveDraft(value, post, showToast).then(
+                    (success) => (this.conflict = !success)
+                  ); // Force retry
                 },
               },
             ],
           });
-          this.conflict = false;
           return false;
         }
       }

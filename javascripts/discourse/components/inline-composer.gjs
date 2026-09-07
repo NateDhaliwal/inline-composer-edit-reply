@@ -3,14 +3,12 @@ import { tracked } from "@glimmer/tracking";
 import { hash } from "@ember/helper";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
-import didInsert from "@ember/render-modifiers/modifiers/did-insert";
 import { cancel, debounce } from "@ember/runloop";
 import { service } from "@ember/service";
 import Form from "discourse/components/form";
 import DiscardDraftModal from "discourse/components/modal/discard-draft";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
-import { PLATFORM_KEY_MODIFIER } from "discourse/services/keyboard-shortcuts";
 import { eq, not } from "discourse/truth-helpers";
 import DButton from "discourse/ui-kit/d-button";
 import DConditionalLoadingSpinner from "discourse/ui-kit/d-conditional-loading-spinner";
@@ -18,7 +16,6 @@ import { isundefnull } from "../helpers/isundefnull";
 
 export default class InlineComposer extends Component {
   @service inlineComposer;
-  @service keyboardShortcuts;
   @service modal;
 
   @tracked formApi;
@@ -126,9 +123,9 @@ export default class InlineComposer extends Component {
 
   @action
   handleKeyDown(event) {
-    event.preventDefault();
     if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-      this.formApi.submit();
+      event.preventDefault();
+      this.formApi?.submit();
     }
   }
 
