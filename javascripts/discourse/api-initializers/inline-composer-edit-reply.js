@@ -8,7 +8,6 @@ export default apiInitializer((api) => {
     "post-menu-buttons",
     ({ value: dag, context: { post, buttonKeys, state } }) => {
       if (post.canEdit) {
-        console.log(buttonKeyBefore(siteSettings, buttonKeys, state.collapsed));
         dag.add("inline-composer", InlineComposerEditButton, {
           post,
           after:
