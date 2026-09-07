@@ -53,6 +53,9 @@ export default class InlineComposer extends Component {
 
   @action
   onContentSet(value, { set }) {
+    if (this.inlineComposer.conflict) {
+      return;
+    }
     set("content", value);
     this.scheduleDraftSave(value);
   }

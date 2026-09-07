@@ -15,6 +15,7 @@ export default class InlineComposerService extends Service {
   @tracked currentSequence = 0;
   @tracked loading = true;
   @tracked draftForceSave = false;
+  @tracked conflict = false;
   #cache = {};
 
   draftKeyFor(postId) {
@@ -182,6 +183,7 @@ export default class InlineComposerService extends Service {
         xhr.responseJSON.errors &&
         xhr.responseJSON.errors.length
       ) {
+        this.conflict = true;
         const json = e.jqXHR.responseJSON;
 
         if (json.extras?.description) {
@@ -203,6 +205,7 @@ export default class InlineComposerService extends Service {
               },
             ],
           });
+          this.conflict = false;
           return false;
         }
       }
