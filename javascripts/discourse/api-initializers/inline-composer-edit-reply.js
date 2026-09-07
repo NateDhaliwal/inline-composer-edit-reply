@@ -7,8 +7,6 @@ export default apiInitializer((api) => {
   api.registerValueTransformer(
     "post-menu-buttons",
     ({ value: dag, context: { post, buttonKeys, state } }) => {
-      console.log(post.wiki);
-      console.log(buttonKeys);
       if (post.canEdit) {
         dag.add("inline-composer", InlineComposerEditButton, {
           post,
