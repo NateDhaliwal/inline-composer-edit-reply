@@ -8,19 +8,16 @@ import Form from "discourse/components/form";
 import DiscardDraftModal from "discourse/components/modal/discard-draft";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
-import { eq } from "discourse/truth-helpers";
+import { eq, not } from "discourse/truth-helpers";
 import DButton from "discourse/ui-kit/d-button";
-import { DConditionalLoadingSpinner } from "discourse/ui-kit/d-conditional-loading-spinner";
+import DConditionalLoadingSpinner from "discourse/ui-kit/d-conditional-loading-spinner";
+import { isundefnull } from "../helpers/isundefnull";
 
 export default class InlineComposer extends Component {
   @service inlineComposer;
   @service modal;
 
   @tracked formApi;
-
-  constructor() {
-    super(...arguments);
-  }
 
   @action
   async editPost(data) {
@@ -35,9 +32,10 @@ export default class InlineComposer extends Component {
           },
         },
       });
-      this.inlineComposer.stopEditing(this.formApi.get("content"));
       await this.inlineComposer.clearDraft(this.args.post.id);
-      // this.inlineComposer.composerContent = newContent; // We update the composer to the new value
+      this.inlineComposer.stopEditing(this.formApi.get("content"), {
+        clearCache: true,
+      });
     } catch (e) {
       popupAjaxError(e);
     }
@@ -46,7 +44,6 @@ export default class InlineComposer extends Component {
   // Form API
   @action
   registerAPI(api) {
-    // await this.getRawPost();
     this.formApi = api;
   }
 
@@ -56,14 +53,19 @@ export default class InlineComposer extends Component {
     this.scheduleDraftSave(value);
   }
 
-  scheduleDraftSave(value) {
-    this._saveDraftDebounce = debounce(
-      this,
-      this.inlineComposer.saveDraft,
-      value,
-      this.args.post,
-      1000
-    );
+  scheduleDraftSave() {
+    this._saveDraftDebounce = debounce(this, this.performDraftSave, 1000);
+  }
+
+  @action
+  performDraftSave() {
+    if (this.inlineComposer.editingPostId !== this.args.post.id) {
+      return;
+    }
+    const value = this.formApi?.get("content");
+    if (value !== undefined) {
+      this.inlineComposer.saveDraft(value, this.args.post, false);
+    }
   }
 
   @action
@@ -93,6 +95,7 @@ export default class InlineComposer extends Component {
         });
       } else {
         this.inlineComposer.stopEditing(this.formApi.get("content"));
+        resolve();
       }
     });
   }
@@ -101,8 +104,16 @@ export default class InlineComposer extends Component {
   async saveDraftForm() {
     const value = this.formApi?.get("content");
     if (value !== undefined) {
-      await this.inlineComposer.saveDraft(value, this.args.post, true);
-      this.inlineComposer.stopEditing(this.formApi.get("content"));
+      cancel(this._saveDraftDebounce);
+      // Check if true/false in case of 409 conflicts
+      const saveSuccess = await this.inlineComposer.saveDraft(
+        value,
+        this.args.post,
+        true
+      );
+      if (saveSuccess) {
+        this.inlineComposer.stopEditing(this.formApi.get("content"));
+      }
     }
   }
 
@@ -113,39 +124,44 @@ export default class InlineComposer extends Component {
           @condition={{this.inlineComposer.loading}}
         />
       {{else}}
-        <Form
-          @data={{hash content=this.inlineComposer.composerContent}}
-          @onSubmit={{this.editPost}}
-          @onRegisterApi={{this.registerAPI}}
-          as |form|
-        >
-          <form.Field
-            @name="content"
-            @validation="required"
-            @title="&nbsp;"
-            @type="composer"
-            @onSet={{this.onContentSet}}
-            as |field|
+        {{log this.inlineComposer.composerContent}}
+        {{#if (not (isundefnull this.inlineComposer.composerContent))}}
+          <Form
+            @data={{hash content=this.inlineComposer.composerContent}}
+            @onSubmit={{this.editPost}}
+            @onRegisterApi={{this.registerAPI}}
+            as |form|
           >
-            <field.Control @preview={{settings.show_preview}} />
-          </form.Field>
+            <form.Field
+              @name="content"
+              @validation="required"
+              @title="&nbsp;"
+              @type="composer"
+              @onSet={{this.onContentSet}}
+              as |field|
+            >
+              <field.Control @preview={{settings.show_preview}} />
+            </form.Field>
 
-          <div class="button-row">
-            <form.Submit @label={{themePrefix "composer_edit_text"}} />
-            <DButton
-              @action={{this.cancelComposer}}
-              class="discard-button btn-transparent"
-              @title="composer.cancel_edit"
-              @label="composer.cancel_edit"
-            />
-            <DButton
-              @action={{this.saveDraftForm}}
-              class="btn-transparent"
-              @title={{themePrefix "save_draft_button_text"}}
-              @label={{themePrefix "save_draft_button_text"}}
-            />
-          </div>
-        </Form>
+            <div class="button-row">
+              <form.Submit @label={{themePrefix "composer_edit_text"}} />
+              <DButton
+                @action={{this.cancelComposer}}
+                class="discard-button btn-transparent"
+                @title="composer.cancel_edit"
+                @label="composer.cancel_edit"
+              />
+              <DButton
+                @action={{this.saveDraftForm}}
+                class="btn-transparent"
+                @title={{themePrefix "save_draft_button_text"}}
+                @label={{themePrefix "save_draft_button_text"}}
+              />
+            </div>
+          </Form>
+        {{else}}
+          <p>Error!!</p>
+        {{/if}}
       {{/if}}
     {{else}}
       {{yield}}

@@ -22,6 +22,9 @@ export default class InlineComposerService extends Service {
   }
 
   async startEditing(postId) {
+    if (this.editingPostId === postId) {
+      return;
+    }
     // Reset all!
     this.editingPostId = postId;
     this.composerContent = undefined;
@@ -39,7 +42,7 @@ export default class InlineComposerService extends Service {
     this.loading = false;
   }
 
-  stopEditing(value, { clearCache = false }) {
+  stopEditing(value, { clearCache = false } = {}) {
     if (clearCache) {
       delete this.#cache[this.editingPostId];
     } else if (value !== undefined) {
@@ -62,6 +65,22 @@ export default class InlineComposerService extends Service {
   async loadDraft(postId) {
     try {
       const draft = await Draft.get(this.draftKey);
+      if (!draft.draft) {
+        try {
+          const res = await ajax(`/posts/${postId}.json`);
+          this.composerContent = res.raw;
+          this.#cache[postId] = {
+            content: res.raw,
+            draft_sequence: 0,
+            saved: false,
+          };
+          this.loading = false;
+        } catch (e2) {
+          this.loading = false;
+          popupAjaxError(e2);
+        }
+        return;
+      }
       this.currentSequence = draft.draft_sequence;
       const composer_content = draft.draft
         ? JSON.parse(draft.draft).reply
@@ -70,6 +89,7 @@ export default class InlineComposerService extends Service {
       this.#cache[postId] = {
         content: composer_content,
         draft_sequence: draft.draft_sequence,
+        saved: true,
       };
     } catch (e) {
       // If the post is not in the cache or in the user's drafts, fetch the post
@@ -80,12 +100,14 @@ export default class InlineComposerService extends Service {
           this.#cache[postId] = {
             content: res.raw,
             draft_sequence: 0,
+            saved: false,
           };
           this.loading = false;
         } catch (e2) {
           this.loading = false;
           popupAjaxError(e2);
         }
+        return;
       }
       if (e.status === 0) {
         // Network error
@@ -101,7 +123,10 @@ export default class InlineComposerService extends Service {
     if (!draftEntry) {
       return;
     }
-    await Draft.clear(this.draftKeyFor(postId), draftEntry.draft_sequence);
+    // Guards against users editing posts in less than the 1 second call: Item exists in cache but not in Drafts.
+    if (draftEntry.saved) {
+      await Draft.clear(this.draftKeyFor(postId), draftEntry.draft_sequence);
+    }
     delete this.#cache[postId];
   }
 
@@ -133,6 +158,7 @@ export default class InlineComposerService extends Service {
       this.#cache[post.id] = {
         content: value,
         draft_sequence: this.currentSequence,
+        saved: true,
       };
 
       if (showToast) {
@@ -144,6 +170,7 @@ export default class InlineComposerService extends Service {
           },
         });
       }
+      return true;
     } catch (e) {
       const xhr = e && e.jqXHR;
 
@@ -176,7 +203,7 @@ export default class InlineComposerService extends Service {
               },
             ],
           });
-          return;
+          return false;
         }
       }
     }

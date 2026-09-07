@@ -7,15 +7,15 @@ export default class InlineComposerEditButton extends Component {
   @service inlineComposer;
 
   @action
-  toggleComposer() {
+  async toggleComposer() {
     if (this.inlineComposer.isEditing) {
       // So that we can switch to editing another post effortlessly
       if (this.inlineComposer.editingPostId !== this.args.post.id) {
         this.inlineComposer.stopEditing(this.inlineComposer.editingPostId);
-        this.inlineComposer.startEditing(this.args.post.id);
+        await this.inlineComposer.startEditing(this.args.post.id);
       }
     } else {
-      this.inlineComposer.startEditing(this.args.post.id);
+      await this.inlineComposer.startEditing(this.args.post.id);
     }
   }
 
