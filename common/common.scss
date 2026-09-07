@@ -12,3 +12,7 @@
 #inline-editor > #control-content > .form-kit__container-content {
   width: stretch;
 }
+
+#inline-editor-form {
+  padding-left: var(--topic-body-width-padding);
+}

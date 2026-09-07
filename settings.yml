@@ -1,2 +1,15 @@
 show_preview:
   default: false
+  type: bool
+
+manually_set_composer_height:
+  default: false
+  type: bool
+
+composer_height:
+  default: 300
+  type: integer
+  min: 0
+  depends_on:
+    - manually_set_composer_height
+  depends_behavior: "hidden"

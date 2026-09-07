@@ -12,6 +12,7 @@ import { popupAjaxError } from "discourse/lib/ajax-error";
 import { eq, not } from "discourse/truth-helpers";
 import DButton from "discourse/ui-kit/d-button";
 import DConditionalLoadingSpinner from "discourse/ui-kit/d-conditional-loading-spinner";
+import { i18n } from "discourse-i18n";
 import { isundefnull } from "../helpers/isundefnull";
 
 export default class InlineComposer extends Component {
@@ -30,6 +31,7 @@ export default class InlineComposer extends Component {
         data: {
           post: {
             raw: newContent,
+            edit_reason: data.editReason,
           },
         },
       });
@@ -129,6 +131,13 @@ export default class InlineComposer extends Component {
     }
   }
 
+  get height() {
+    return settings.manually_set_composer_height
+      ? parseInt(settings.composer_height, 10)
+      : (parseInt(localStorage.getItem("discourse_composerHeight"), 10) ??
+          parseInt(settings.composer_height, 10));
+  }
+
   <template>
     {{#if (eq this.inlineComposer.editingPostId @post.id)}}
       {{#if this.inlineComposer.loading}}
@@ -137,42 +146,59 @@ export default class InlineComposer extends Component {
         />
       {{else}}
         {{#if (not (isundefnull this.inlineComposer.composerContent))}}
-          <Form
-            @data={{hash content=this.inlineComposer.composerContent}}
-            @onSubmit={{this.editPost}}
-            @onRegisterApi={{this.registerAPI}}
-            as |form|
-          >
-            <div id="inline-editor">
-              <form.Field
-                @name="content"
-                @validation="required"
-                @title="&nbsp;"
-                @type="composer"
-                @onSet={{this.onContentSet}}
-                {{on "keydown" this.handleKeyDown}}
-                as |field|
-              >
-                <field.Control @preview={{settings.show_preview}} />
-              </form.Field>
-            </div>
+          <div id="inline-editor-form">
+            <Form
+              @data={{hash content=this.inlineComposer.composerContent}}
+              @onSubmit={{this.editPost}}
+              @onRegisterApi={{this.registerAPI}}
+              as |form|
+            >
+              <div id="inline-editor">
+                <form.Field
+                  @name="editReason"
+                  @title={{i18n (themePrefix "composer_edit_reason_title")}}
+                  @type="input"
+                  {{on "keydown" this.handleKeyDown}}
+                  as |field|
+                >
+                  <field.Control placeholder={{i18n "composer.edit_reason"}} />
+                </form.Field>
+                <br />
+                <form.Field
+                  @name="content"
+                  @validation="required"
+                  @title="Content"
+                  @showTitle={{false}}
+                  @type="composer"
+                  @onSet={{this.onContentSet}}
+                  {{on "keydown" this.handleKeyDown}}
+                  as |field|
+                >
+                  {{log this.height}}
+                  <field.Control
+                    @height={{this.height}}
+                    @preview={{settings.show_preview}}
+                  />
+                </form.Field>
+              </div>
 
-            <div class="button-row">
-              <form.Submit @icon="pencil" @label="composer.save_edit" />
-              <DButton
-                @action={{this.cancelComposer}}
-                class="discard-button btn-transparent"
-                @title="composer.cancel_edit"
-                @label="composer.cancel_edit"
-              />
-              <DButton
-                @action={{this.saveDraftForm}}
-                class="btn-transparent"
-                @title={{themePrefix "save_draft_button_text"}}
-                @label={{themePrefix "save_draft_button_text"}}
-              />
-            </div>
-          </Form>
+              <div class="button-row">
+                <form.Submit @icon="pencil" @label="composer.save_edit" />
+                <DButton
+                  @action={{this.cancelComposer}}
+                  class="discard-button btn-transparent"
+                  @title="composer.cancel_edit"
+                  @label="composer.cancel_edit"
+                />
+                <DButton
+                  @action={{this.saveDraftForm}}
+                  class="btn-transparent"
+                  @title={{themePrefix "save_draft_button_text"}}
+                  @label={{themePrefix "save_draft_button_text"}}
+                />
+              </div>
+            </Form>
+          </div>
         {{else}}
           <p>Error!!</p>
         {{/if}}
