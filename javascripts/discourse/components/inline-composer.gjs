@@ -124,7 +124,6 @@ export default class InlineComposer extends Component {
           @condition={{this.inlineComposer.loading}}
         />
       {{else}}
-        {{log this.inlineComposer.composerContent}}
         {{#if (not (isundefnull this.inlineComposer.composerContent))}}
           <Form
             @data={{hash content=this.inlineComposer.composerContent}}
