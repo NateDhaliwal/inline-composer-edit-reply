@@ -85,10 +85,9 @@ export default class InlineComposer extends Component {
     const draft = await this.inlineComposer.getDraft(this.args.post.id);
 
     if (
-      !isundefnull(draft.draft) &&
-      (draft.draft !== null
+      !isundefnull(draft.draft)
         ? JSON.parse(draft.draft).reply !== value
-        : value !== post.raw)
+        : value !== post.raw
     ) {
       await this.inlineComposer.saveDraft(value, this.args.post, false);
     }
@@ -148,10 +147,9 @@ export default class InlineComposer extends Component {
     const draft = await this.inlineComposer.getDraft(this.args.post.id);
 
     if (
-      !isundefnull(draft.draft) &&
-      (draft.draft !== null
+      !isundefnull(draft.draft)
         ? JSON.parse(draft.draft).reply !== value
-        : value !== post.raw)
+        : value !== post.raw
     ) {
       cancel(this._saveDraftDebounce);
       // Check if true/false in case of 409 conflicts

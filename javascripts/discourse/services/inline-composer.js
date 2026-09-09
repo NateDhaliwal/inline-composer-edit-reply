@@ -1,5 +1,4 @@
 import { tracked } from "@glimmer/tracking";
-import { action } from "@ember/object";
 import Service, { service } from "@ember/service";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
@@ -10,6 +9,7 @@ export default class InlineComposerService extends Service {
   @service messageBus;
   @service toasts;
   @service dialog;
+  @service store;
 
   @tracked editingPostId = null;
   @tracked composerContent = undefined;
@@ -17,6 +17,7 @@ export default class InlineComposerService extends Service {
   @tracked loading = true;
   @tracked draftForceSave = false;
   @tracked conflict = false;
+  post = null;
 
   #cache = {};
   #saveDraftPromise = Promise.resolve();
@@ -26,12 +27,26 @@ export default class InlineComposerService extends Service {
   }
 
   async getDraft(postId) {
-    const draft = await Draft.get(this.draftKeyFor(postId));
+    const draft = await Draft.get(await this.draftKeyFor(postId));
     return draft;
   }
 
-  draftKeyFor(postId) {
-    return `post_${postId}`;
+  async draftKeyFor(postId, post_p = null) {
+    if (post_p) {
+      return `topic_${post_p.topic_id}`;
+    }
+
+    if (this.post !== null && this.post.id === postId) {
+      return `topic_${this.post.topic_id}`;
+    }
+
+    const post_obj = await this.store.find("post", postId);
+    if (post_obj) {
+      this.post = post_obj;
+      return `topic_${post_obj.topic_id}`;
+    }
+
+    return null;
   }
 
   async startEditing(postId) {
@@ -44,6 +59,11 @@ export default class InlineComposerService extends Service {
     this.currentSequence = 0;
     this.loading = true;
     this.draftForceSave = false;
+    this.conflict = false;
+
+    if (!(this.post && postId !== this.post.id)) {
+      this.post = null;
+    }
 
     if (postId in this.#cache) {
       const cachedEntry = this.#cache[postId];
@@ -71,7 +91,7 @@ export default class InlineComposerService extends Service {
 
   async loadDraft(postId) {
     try {
-      const draft = await Draft.get(this.draftKeyFor(postId));
+      const draft = await Draft.get(await this.draftKeyFor(postId));
       if (!draft.draft) {
         try {
           const res = await ajax(`/posts/${postId}.json`);
@@ -129,7 +149,7 @@ export default class InlineComposerService extends Service {
     const draftEntry = this.#cache[postId];
 
     if (bypass_cache) {
-      await Draft.clear(this.draftKeyFor(postId), this.currentSequence);
+      await Draft.clear(await this.draftKeyFor(postId), this.currentSequence);
       return;
     }
 
@@ -138,7 +158,10 @@ export default class InlineComposerService extends Service {
     }
 
     if (draftEntry.saved) {
-      await Draft.clear(this.draftKeyFor(postId), draftEntry.draft_sequence);
+      await Draft.clear(
+        await this.draftKeyFor(postId),
+        draftEntry.draft_sequence
+      );
     }
 
     delete this.#cache[postId];
@@ -168,7 +191,6 @@ export default class InlineComposerService extends Service {
       archetypeId: "regular",
       postId: post.id,
       whisper: post.whisper,
-      topicId: post.topic.id,
       original_text: this.composerContent,
       original_title: post.topic.title,
       original_tags: post.topic.tags,
@@ -180,7 +202,7 @@ export default class InlineComposerService extends Service {
       let draft = await this.getDraft(post.id);
       this.currentSequence = draft.draft_sequence + 1;
       await Draft.save(
-        this.draftKeyFor(post.id),
+        await this.draftKeyFor(null, post),
         this.currentSequence,
         data,
         this.messageBus.clientId,
