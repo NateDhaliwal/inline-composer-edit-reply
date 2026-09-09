@@ -1,4 +1,5 @@
 import { tracked } from "@glimmer/tracking";
+import { action } from "@ember/object";
 import Service, { service } from "@ember/service";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
@@ -33,23 +34,30 @@ export default class InlineComposerService extends Service {
     this.loading = true;
     this.draftForceSave = false;
 
+    console.log(this.#cache);
+
     if (postId in this.#cache) {
       const cachedEntry = this.#cache[postId];
       this.composerContent = cachedEntry.content;
-      this.currentSequence = cachedEntry.draft_sequence;
     } else {
       await this.loadDraft(postId);
     }
     this.loading = false;
+    const draft = await Draft.get(this.draftKeyFor(postId));
+    this.currentSequence = draft.draft_sequence;
+    console.log(this.currentSequence);
   }
 
-  stopEditing(value, { clearCache = false } = {}) {
+  stopEditing(value, { clearCache = false, saved = false } = {}) {
+    console.log(this.#cache);
     if (clearCache) {
       delete this.#cache[this.editingPostId];
     } else if (value !== undefined) {
+      console.log(saved);
       this.#cache[this.editingPostId] = {
         content: value,
         draft_sequence: this.currentSequence,
+        saved,
       };
     }
     this.editingPostId = null;
@@ -57,6 +65,11 @@ export default class InlineComposerService extends Service {
 
   get isEditing() {
     return this.editingPostId !== null;
+  }
+
+  @action
+  clearCache() {
+    this.#cache = {};
   }
 
   get draftKey() {
@@ -119,15 +132,22 @@ export default class InlineComposerService extends Service {
     }
   }
 
-  async clearDraft(postId) {
-    const draftEntry = this.#cache[postId]; // Anything to reduce calls
+  async clearDraft(postId, { bypass_cache = false } = {}) {
+    const draftEntry = this.#cache[postId];
+
+    if (bypass_cache) {
+      await Draft.clear(this.draftKeyFor(postId), this.currentSequence);
+      return;
+    }
+
     if (!draftEntry) {
       return;
     }
-    // Guards against users editing posts in less than the 1 second call: Item exists in cache but not in Drafts.
+
     if (draftEntry.saved) {
       await Draft.clear(this.draftKeyFor(postId), draftEntry.draft_sequence);
     }
+
     delete this.#cache[postId];
   }
 
@@ -135,7 +155,7 @@ export default class InlineComposerService extends Service {
     if (this.editingPostId !== post.id) {
       return;
     }
-    this.currentSequence += 1;
+
     const data = {
       reply: value,
       action: "edit_post",
@@ -150,6 +170,8 @@ export default class InlineComposerService extends Service {
     };
 
     try {
+      let draft = await Draft.get(this.draftKeyFor(post.id));
+      this.currentSequence = draft.draft_sequence + 1;
       await Draft.save(
         this.draftKey,
         this.currentSequence,
@@ -172,6 +194,8 @@ export default class InlineComposerService extends Service {
           },
         });
       }
+      draft = await Draft.get(this.draftKeyFor(post.id));
+      this.currentSequence = draft.draft_sequence;
       return true;
     } catch (e) {
       const xhr = e && e.jqXHR;
@@ -199,11 +223,15 @@ export default class InlineComposerService extends Service {
               {
                 label: i18n("composer.ignore"),
                 class: "btn-default",
-                action: () => {
+                action: async () => {
                   this.draftForceSave = true;
                   this.saveDraft(value, post, showToast).then(
                     (success) => (this.conflict = !success)
                   ); // Force retry
+                  console.log(this.currentSequence);
+                  // const draft = await Draft.get(this.draftKeyFor(post.id));
+                  // this.currentSequence = draft.draft_sequence;
+                  console.log(this.#cache);
                 },
               },
             ],

@@ -9,6 +9,7 @@ import Form from "discourse/components/form";
 import DiscardDraftModal from "discourse/components/modal/discard-draft";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
+import Draft from "discourse/models/draft";
 import { eq, not } from "discourse/truth-helpers";
 import DButton from "discourse/ui-kit/d-button";
 import DConditionalLoadingSpinner from "discourse/ui-kit/d-conditional-loading-spinner";
@@ -20,6 +21,7 @@ export default class InlineComposer extends Component {
   @service modal;
 
   @tracked formApi;
+  @tracked cancelling = false;
 
   @action
   async editPost(data) {
@@ -60,49 +62,79 @@ export default class InlineComposer extends Component {
   }
 
   scheduleDraftSave() {
+    console.log(this.cancelling);
+    if (this.cancelling) {
+      return;
+    }
     this._saveDraftDebounce = debounce(this, this.performDraftSave, 1000);
   }
 
   @action
-  performDraftSave() {
+  async performDraftSave() {
+    cancel(this._saveDraftDebounce);
     if (this.inlineComposer.editingPostId !== this.args.post.id) {
       return;
     }
     const value = this.formApi?.get("content");
-    if (value !== undefined) {
-      this.inlineComposer.saveDraft(value, this.args.post, false);
+    if (value !== undefined && value !== this.inlineComposer.composerContent) {
+      await this.inlineComposer.saveDraft(value, this.args.post, false);
     }
   }
 
   @action
   cancelComposer() {
+    this.cancelling = true;
     cancel(this._saveDraftDebounce);
 
     return new Promise((resolve) => {
-      if (
-        this.formApi?.isDirty ||
-        this.inlineComposer.composerContent !== this.formApi?.get("content")
-      ) {
-        this.modal.show(DiscardDraftModal, {
-          model: {
-            confirmMessageKey: "post.cancel_composer.confirm_edit",
-            discardButtonKey: "post.cancel_composer.discard_edit",
-            onDestroyDraft: async () => {
-              await this.inlineComposer.clearDraft(this.args.post.id);
-              this.inlineComposer.stopEditing(this.formApi.get("content"), {
-                clearCache: true,
-              });
-              resolve(true);
+      // When cancelling a composer with a pre-loaded draft, the modal does not appear.
+      // By fetching the raw post and comparing it, we ensure that is is shown.
+      ajax(`/posts/${this.args.post.id}.json`).then((res) => {
+        console.log(res.raw);
+        console.log(res.raw !== this.formApi.get("content"));
+        if (
+          this.formApi?.isDirty ||
+          this.inlineComposer.composerContent !==
+            this.formApi?.get("content") ||
+          res.raw !== this.formApi.get("content")
+        ) {
+          this.modal.show(DiscardDraftModal, {
+            model: {
+              confirmMessageKey: "post.cancel_composer.confirm_edit",
+              discardButtonKey: "post.cancel_composer.discard_edit",
+              onDestroyDraft: async () => {
+                const postId = this.args.post.id;
+                const key = this.inlineComposer.draftKeyFor(postId);
+
+                await this.inlineComposer.clearDraft(postId);
+
+                try {
+                  const draft = await Draft.get(key);
+                  console.log("DRAFT AFTER DELETE:", draft);
+                } catch (e) {
+                  console.log("GET AFTER DELETE:", e.status, e);
+                }
+
+                this.inlineComposer.stopEditing(undefined, {
+                  clearCache: true,
+                });
+
+                this.cancelling = false;
+
+                resolve(true);
+              },
+              onCancelDiscard: () => {
+                this.cancelling = false;
+                resolve(false);
+              },
             },
-            onCancelDiscard: () => {
-              resolve(false);
-            },
-          },
-        });
-      } else {
-        this.inlineComposer.stopEditing(this.formApi.get("content"));
-        resolve();
-      }
+          });
+        } else {
+          this.inlineComposer.stopEditing(this.formApi.get("content"));
+          this.cancelling = false;
+          resolve();
+        }
+      });
     });
   }
 
@@ -118,7 +150,9 @@ export default class InlineComposer extends Component {
         true
       );
       if (saveSuccess) {
-        this.inlineComposer.stopEditing(this.formApi.get("content"));
+        this.inlineComposer.stopEditing(this.formApi.get("content"), {
+          saved: true,
+        });
       }
     }
   }
@@ -195,11 +229,16 @@ export default class InlineComposer extends Component {
                   @title={{themePrefix "save_draft_button_text"}}
                   @label={{themePrefix "save_draft_button_text"}}
                 />
+                <DButton
+                  @action={{this.inlineComposer.clearCache}}
+                  class="btn-transparent"
+                  @translatedLabel="Clear cache"
+                />
               </div>
             </Form>
           </div>
         {{else}}
-          <p>Error!!</p>
+          <DConditionalLoadingSpinner @condition={{true}} />
         {{/if}}
       {{/if}}
     {{else}}
