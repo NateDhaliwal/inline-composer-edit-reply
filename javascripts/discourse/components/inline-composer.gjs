@@ -62,7 +62,6 @@ export default class InlineComposer extends Component {
   }
 
   scheduleDraftSave() {
-    console.log(this.cancelling);
     if (this.cancelling) {
       return;
     }
@@ -90,8 +89,6 @@ export default class InlineComposer extends Component {
       // When cancelling a composer with a pre-loaded draft, the modal does not appear.
       // By fetching the raw post and comparing it, we ensure that is is shown.
       ajax(`/posts/${this.args.post.id}.json`).then((res) => {
-        console.log(res.raw);
-        console.log(res.raw !== this.formApi.get("content"));
         if (
           this.formApi?.isDirty ||
           this.inlineComposer.composerContent !==
@@ -107,13 +104,6 @@ export default class InlineComposer extends Component {
                 const key = this.inlineComposer.draftKeyFor(postId);
 
                 await this.inlineComposer.clearDraft(postId);
-
-                try {
-                  const draft = await Draft.get(key);
-                  console.log("DRAFT AFTER DELETE:", draft);
-                } catch (e) {
-                  console.log("GET AFTER DELETE:", e.status, e);
-                }
 
                 this.inlineComposer.stopEditing(undefined, {
                   clearCache: true,

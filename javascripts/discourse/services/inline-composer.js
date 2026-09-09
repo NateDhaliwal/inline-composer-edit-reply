@@ -34,8 +34,6 @@ export default class InlineComposerService extends Service {
     this.loading = true;
     this.draftForceSave = false;
 
-    console.log(this.#cache);
-
     if (postId in this.#cache) {
       const cachedEntry = this.#cache[postId];
       this.composerContent = cachedEntry.content;
@@ -45,15 +43,12 @@ export default class InlineComposerService extends Service {
     this.loading = false;
     const draft = await Draft.get(this.draftKeyFor(postId));
     this.currentSequence = draft.draft_sequence;
-    console.log(this.currentSequence);
   }
 
   stopEditing(value, { clearCache = false, saved = false } = {}) {
-    console.log(this.#cache);
     if (clearCache) {
       delete this.#cache[this.editingPostId];
     } else if (value !== undefined) {
-      console.log(saved);
       this.#cache[this.editingPostId] = {
         content: value,
         draft_sequence: this.currentSequence,
@@ -228,10 +223,6 @@ export default class InlineComposerService extends Service {
                   this.saveDraft(value, post, showToast).then(
                     (success) => (this.conflict = !success)
                   ); // Force retry
-                  console.log(this.currentSequence);
-                  // const draft = await Draft.get(this.draftKeyFor(post.id));
-                  // this.currentSequence = draft.draft_sequence;
-                  console.log(this.#cache);
                 },
               },
             ],
