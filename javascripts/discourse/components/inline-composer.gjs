@@ -81,7 +81,15 @@ export default class InlineComposer extends Component {
       return;
     }
     const value = this.formApi?.get("content");
-    if (value !== undefined && value !== this.inlineComposer.composerContent) {
+    const post = await ajax(`/posts/${this.args.post.id}.json`);
+    const draft = await this.inlineComposer.getDraft(this.args.post.id);
+
+    if (
+      !isundefnull(draft.draft) &&
+      (draft.draft !== null
+        ? JSON.parse(draft.draft).reply !== value
+        : value !== post.raw)
+    ) {
       await this.inlineComposer.saveDraft(value, this.args.post, false);
     }
   }
@@ -136,7 +144,15 @@ export default class InlineComposer extends Component {
   @action
   async saveDraftForm() {
     const value = this.formApi?.get("content");
-    if (value !== undefined) {
+    const post = await ajax(`/posts/${this.args.post.id}.json`);
+    const draft = await this.inlineComposer.getDraft(this.args.post.id);
+
+    if (
+      !isundefnull(draft.draft) &&
+      (draft.draft !== null
+        ? JSON.parse(draft.draft).reply !== value
+        : value !== post.raw)
+    ) {
       cancel(this._saveDraftDebounce);
       // Check if true/false in case of 409 conflicts
       const saveSuccess = await this.inlineComposer.saveDraft(
@@ -144,12 +160,14 @@ export default class InlineComposer extends Component {
         this.args.post,
         true
       );
-      if (saveSuccess) {
-        this.inlineComposer.stopEditing(this.formApi.get("content"), {
-          saved: true,
-        });
+      if (!saveSuccess) {
+        return;
       }
     }
+
+    this.inlineComposer.stopEditing(this.formApi.get("content"), {
+      saved: true,
+    });
   }
 
   @action
@@ -216,11 +234,6 @@ export default class InlineComposer extends Component {
                   @action={{this.saveDraftForm}}
                   @label={{themePrefix "save_draft_button_text"}}
                   @title={{themePrefix "save_draft_button_text"}}
-                />
-                <DButton
-                  class="btn-transparent"
-                  @action={{this.inlineComposer.clearCache}}
-                  @translatedLabel="Clear cache"
                 />
               </div>
             </Form>

@@ -17,14 +17,17 @@ export default class InlineComposerService extends Service {
   @tracked loading = true;
   @tracked draftForceSave = false;
   @tracked conflict = false;
+
   #cache = {};
+  #saveDraftPromise = Promise.resolve();
 
   get isEditing() {
     return this.editingPostId !== null;
   }
 
-  get draftKey() {
-    return `post_${this.editingPostId}`;
+  async getDraft(postId) {
+    const draft = await Draft.get(this.draftKeyFor(postId));
+    return draft;
   }
 
   draftKeyFor(postId) {
@@ -49,7 +52,7 @@ export default class InlineComposerService extends Service {
       await this.loadDraft(postId);
     }
     this.loading = false;
-    const draft = await Draft.get(this.draftKeyFor(postId));
+    const draft = await this.getDraft(postId);
     this.currentSequence = draft.draft_sequence;
   }
 
@@ -66,14 +69,9 @@ export default class InlineComposerService extends Service {
     this.editingPostId = null;
   }
 
-  @action
-  clearCache() {
-    this.#cache = {};
-  }
-
   async loadDraft(postId) {
     try {
-      const draft = await Draft.get(this.draftKey);
+      const draft = await Draft.get(this.draftKeyFor(postId));
       if (!draft.draft) {
         try {
           const res = await ajax(`/posts/${postId}.json`);
@@ -146,7 +144,17 @@ export default class InlineComposerService extends Service {
     delete this.#cache[postId];
   }
 
-  async saveDraft(value, post, showToast = false) {
+  // This creates a queue so that we don't have 2 saveDraft()s from the debounce and the 'Save draft' button happening at the same time
+  // This creates a queue of saving the drafts
+  saveDraft(value, post, showToast = false) {
+    this.#saveDraftPromise = this.#saveDraftPromise
+      .catch(() => {})
+      .then(() => this.#performSaveDraft(value, post, showToast));
+
+    return this.#saveDraftPromise;
+  }
+
+  async #performSaveDraft(value, post, showToast = false) {
     if (this.editingPostId !== post.id) {
       return;
     }
@@ -160,6 +168,7 @@ export default class InlineComposerService extends Service {
       archetypeId: "regular",
       postId: post.id,
       whisper: post.whisper,
+      topicId: post.topic.id,
       original_text: this.composerContent,
       original_title: post.topic.title,
       original_tags: post.topic.tags,
@@ -168,11 +177,10 @@ export default class InlineComposerService extends Service {
     };
 
     try {
-      let draft = await Draft.get(this.draftKeyFor(post.id));
+      let draft = await this.getDraft(post.id);
       this.currentSequence = draft.draft_sequence + 1;
-
       await Draft.save(
-        this.draftKey,
+        this.draftKeyFor(post.id),
         this.currentSequence,
         data,
         this.messageBus.clientId,
@@ -193,7 +201,7 @@ export default class InlineComposerService extends Service {
           },
         });
       }
-      draft = await Draft.get(this.draftKeyFor(post.id));
+      draft = await this.getDraft(post.id);
       this.currentSequence = draft.draft_sequence;
       return true;
     } catch (e) {
@@ -211,27 +219,36 @@ export default class InlineComposerService extends Service {
         const json = e.jqXHR.responseJSON;
 
         if (json.extras?.description) {
-          this.dialog.alert({
-            message: json.extras.description,
-            buttons: [
-              {
-                label: i18n("composer.reload"),
-                class: "btn-primary",
-                action: () => window.location.reload(),
-              },
-              {
-                label: i18n("composer.ignore"),
-                class: "btn-default",
-                action: async () => {
-                  this.draftForceSave = true;
-                  this.saveDraft(value, post, showToast).then(
-                    (success) => (this.conflict = !success)
-                  ); // Force retry
+          return new Promise((resolve) => {
+            this.dialog.alert({
+              message: json.extras.description,
+              buttons: [
+                {
+                  label: i18n("composer.reload"),
+                  class: "btn-primary",
+                  action: () => window.location.reload(),
                 },
-              },
-            ],
+                {
+                  label: i18n("composer.ignore"),
+                  class: "btn-default",
+                  action: async () => {
+                    this.draftForceSave = true;
+                    try {
+                      const success = await this.#performSaveDraft(
+                        value,
+                        post,
+                        showToast
+                      );
+                      this.conflict = !success;
+                      resolve(success);
+                    } finally {
+                      this.draftForceSave = false;
+                    }
+                  },
+                },
+              ],
+            });
           });
-          return false;
         }
       }
     }

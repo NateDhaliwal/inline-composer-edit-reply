@@ -27,11 +27,11 @@ export default class InlineComposerEditButton extends Component {
         "edit"
         (if @post.wiki "create" "btn-flat")
       }}
-      @icon={{if @post.wiki "far-pen-to-square" "pencil"}}
       @action={{this.toggleComposer}}
+      @ariaLabel="post.controls.edit"
+      @icon={{if @post.wiki "far-pen-to-square" "pencil"}}
       @label={{if @post.wiki "post.controls.edit_action"}}
       @title="post.controls.edit"
-      @ariaLabel="post.controls.edit"
     />
   </template>
 }
