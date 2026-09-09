@@ -153,15 +153,17 @@ export default class InlineComposerService extends Service {
 
     const data = {
       reply: value,
-      action: "edit_post",
+      action: "edit",
       title: post.topic.title,
-      original_text: this.composerContent,
-      postId: post.id,
       categoryId: post.topic.category_id,
       tags: post.topic.tags,
       archetypeId: "regular",
-      slug: post.topic.slug,
-      topicId: post.topic_id,
+      postId: post.id,
+      original_text: this.composerContent,
+      original_title: post.topic.title,
+      original_tags: post.topic.tags,
+      reply_to_post_number: post.reply_to_post_number,
+      reply_to_user: post.reply_to_user,
     };
 
     try {

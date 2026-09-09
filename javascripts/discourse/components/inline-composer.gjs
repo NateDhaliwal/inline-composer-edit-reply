@@ -101,7 +101,6 @@ export default class InlineComposer extends Component {
               discardButtonKey: "post.cancel_composer.discard_edit",
               onDestroyDraft: async () => {
                 const postId = this.args.post.id;
-                const key = this.inlineComposer.draftKeyFor(postId);
 
                 await this.inlineComposer.clearDraft(postId);
 
