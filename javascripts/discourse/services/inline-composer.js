@@ -19,6 +19,14 @@ export default class InlineComposerService extends Service {
   @tracked conflict = false;
   #cache = {};
 
+  get isEditing() {
+    return this.editingPostId !== null;
+  }
+
+  get draftKey() {
+    return `post_${this.editingPostId}`;
+  }
+
   draftKeyFor(postId) {
     return `post_${postId}`;
   }
@@ -58,17 +66,9 @@ export default class InlineComposerService extends Service {
     this.editingPostId = null;
   }
 
-  get isEditing() {
-    return this.editingPostId !== null;
-  }
-
   @action
   clearCache() {
     this.#cache = {};
-  }
-
-  get draftKey() {
-    return `post_${this.editingPostId}`;
   }
 
   async loadDraft(postId) {
@@ -159,6 +159,7 @@ export default class InlineComposerService extends Service {
       tags: post.topic.tags,
       archetypeId: "regular",
       postId: post.id,
+      whisper: post.whisper,
       original_text: this.composerContent,
       original_title: post.topic.title,
       original_tags: post.topic.tags,
@@ -169,6 +170,7 @@ export default class InlineComposerService extends Service {
     try {
       let draft = await Draft.get(this.draftKeyFor(post.id));
       this.currentSequence = draft.draft_sequence + 1;
+
       await Draft.save(
         this.draftKey,
         this.currentSequence,

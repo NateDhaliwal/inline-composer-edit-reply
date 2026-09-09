@@ -9,7 +9,6 @@ import Form from "discourse/components/form";
 import DiscardDraftModal from "discourse/components/modal/discard-draft";
 import { ajax } from "discourse/lib/ajax";
 import { popupAjaxError } from "discourse/lib/ajax-error";
-import Draft from "discourse/models/draft";
 import { eq, not } from "discourse/truth-helpers";
 import DButton from "discourse/ui-kit/d-button";
 import DConditionalLoadingSpinner from "discourse/ui-kit/d-conditional-loading-spinner";
@@ -22,6 +21,13 @@ export default class InlineComposer extends Component {
 
   @tracked formApi;
   @tracked cancelling = false;
+
+  get height() {
+    return settings.manually_set_composer_height
+      ? parseInt(settings.composer_height, 10)
+      : (parseInt(localStorage.getItem("discourse_composerHeight"), 10) ??
+          parseInt(settings.composer_height, 10));
+  }
 
   @action
   async editPost(data) {
@@ -154,13 +160,6 @@ export default class InlineComposer extends Component {
     }
   }
 
-  get height() {
-    return settings.manually_set_composer_height
-      ? parseInt(settings.composer_height, 10)
-      : (parseInt(localStorage.getItem("discourse_composerHeight"), 10) ??
-          parseInt(settings.composer_height, 10));
-  }
-
   <template>
     {{#if (eq this.inlineComposer.editingPostId @post.id)}}
       {{#if this.inlineComposer.loading}}
@@ -172,8 +171,8 @@ export default class InlineComposer extends Component {
           <div id="inline-editor-form">
             <Form
               @data={{hash content=this.inlineComposer.composerContent}}
-              @onSubmit={{this.editPost}}
               @onRegisterApi={{this.registerAPI}}
+              @onSubmit={{this.editPost}}
               as |form|
             >
               <div id="inline-editor">
@@ -189,11 +188,11 @@ export default class InlineComposer extends Component {
                 <br />
                 <form.Field
                   @name="content"
-                  @validation="required"
-                  @title="Content"
-                  @showTitle={{false}}
-                  @type="composer"
                   @onSet={{this.onContentSet}}
+                  @showTitle={{false}}
+                  @title="Content"
+                  @type="composer"
+                  @validation="required"
                   {{on "keydown" this.handleKeyDown}}
                   as |field|
                 >
@@ -207,20 +206,20 @@ export default class InlineComposer extends Component {
               <div class="button-row">
                 <form.Submit @icon="pencil" @label="composer.save_edit" />
                 <DButton
-                  @action={{this.cancelComposer}}
                   class="discard-button btn-transparent"
-                  @title="composer.cancel_edit"
+                  @action={{this.cancelComposer}}
                   @label="composer.cancel_edit"
+                  @title="composer.cancel_edit"
                 />
                 <DButton
+                  class="btn-transparent"
                   @action={{this.saveDraftForm}}
-                  class="btn-transparent"
-                  @title={{themePrefix "save_draft_button_text"}}
                   @label={{themePrefix "save_draft_button_text"}}
+                  @title={{themePrefix "save_draft_button_text"}}
                 />
                 <DButton
-                  @action={{this.inlineComposer.clearCache}}
                   class="btn-transparent"
+                  @action={{this.inlineComposer.clearCache}}
                   @translatedLabel="Clear cache"
                 />
               </div>
