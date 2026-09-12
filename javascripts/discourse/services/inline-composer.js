@@ -23,7 +23,6 @@ export default class InlineComposerService extends Service {
   #cache = {};
   #draftQueue = [];
   #processingDraftQueue = false;
-  #saveDraftPromise = Promise.resolve();
 
   get isEditing() {
     return this.editingPostId !== null;
@@ -212,10 +211,6 @@ export default class InlineComposerService extends Service {
   }
 
   async #performSaveDraft(value, post, showToast = false) {
-    console.trace("[PERFORM SAVE DRAFT]", {
-      postId: post.id,
-      value,
-    });
     if (this.editingPostId !== post.id) {
       return;
     }
@@ -299,11 +294,7 @@ export default class InlineComposerService extends Service {
                   action: async () => {
                     this.draftForceSave = true;
                     try {
-                      const success = await this.saveDraft(
-                        value,
-                        post,
-                        showToast
-                      );
+                      const success = await this.saveDraft(value, post, false);
                       this.conflict = !success;
                       resolve(success);
                     } finally {

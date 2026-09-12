@@ -4,6 +4,34 @@ import InlineComposerEditButton from "../components/inline-composer-edit-button"
 
 export default apiInitializer((api) => {
   const siteSettings = api.container.lookup("service:site-settings");
+  const inlineComposer = api.container.lookup("service:inline-composer");
+  api.modifyClass("route:topic.from-params", (Superclass) => {
+    return class extends Superclass {
+      setupController(controller, params) {
+        const topic = params._nested?.topic || this.modelFor("topic"); // For nested topics as well
+
+        if (topic?.draft) {
+          let draftData;
+          try {
+            draftData = JSON.parse(topic.draft);
+          } catch {
+            draftData = null;
+          }
+
+          if (draftData?.action === "edit" && draftData?.postId) {
+            if (params._nested?.topic) {
+              params._nested.topic.draft = null;
+            }
+
+            inlineComposer.startEditing(draftData.postId);
+          }
+        }
+
+        super.setupController(...arguments);
+      }
+    };
+  });
+
   api.registerValueTransformer(
     "post-menu-buttons",
     ({ value: dag, context: { post, buttonKeys, state } }) => {
@@ -20,6 +48,7 @@ export default apiInitializer((api) => {
       }
     }
   );
+
   api.renderInOutlet("post-content-cooked-html", InlineComposer);
 });
 
