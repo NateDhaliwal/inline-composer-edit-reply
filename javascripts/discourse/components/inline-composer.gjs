@@ -71,6 +71,7 @@ export default class InlineComposer extends Component {
     if (this.cancelling) {
       return;
     }
+    cancel(this._saveDraftDebounce);
     this._saveDraftDebounce = debounce(this, this.performDraftSave, 1000);
   }
 

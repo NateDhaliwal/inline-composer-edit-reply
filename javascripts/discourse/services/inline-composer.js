@@ -17,9 +17,12 @@ export default class InlineComposerService extends Service {
   @tracked loading = true;
   @tracked draftForceSave = false;
   @tracked conflict = false;
+
   post = null;
 
   #cache = {};
+  #draftQueue = [];
+  #processingDraftQueue = false;
   #saveDraftPromise = Promise.resolve();
 
   get isEditing() {
@@ -170,14 +173,49 @@ export default class InlineComposerService extends Service {
   // This creates a queue so that we don't have 2 saveDraft()s from the debounce and the 'Save draft' button happening at the same time
   // This creates a queue of saving the drafts
   saveDraft(value, post, showToast = false) {
-    this.#saveDraftPromise = this.#saveDraftPromise
-      .catch(() => {})
-      .then(() => this.#performSaveDraft(value, post, showToast));
+    return new Promise((resolve, reject) => {
+      this.#draftQueue.push({
+        value,
+        post,
+        showToast,
+        resolve,
+        reject,
+      });
 
-    return this.#saveDraftPromise;
+      this.#processDraftQueue();
+    });
+  }
+
+  async #processDraftQueue() {
+    this.#processingDraftQueue = true;
+
+    try {
+      while (this.#draftQueue.length > 0) {
+        const data = this.#draftQueue[0];
+        try {
+          const result = await this.#performSaveDraft(
+            data.value,
+            data.post,
+            data.showToast
+          );
+          data.resolve(result);
+        } catch (e) {
+          data.reject(e);
+        } finally {
+          this.#draftQueue.shift();
+        }
+      }
+    } finally {
+      // Only set this once all items are dealt with, not at the end of every iteration
+      this.#processingDraftQueue = false;
+    }
   }
 
   async #performSaveDraft(value, post, showToast = false) {
+    console.trace("[PERFORM SAVE DRAFT]", {
+      postId: post.id,
+      value,
+    });
     if (this.editingPostId !== post.id) {
       return;
     }
@@ -200,7 +238,9 @@ export default class InlineComposerService extends Service {
 
     try {
       let draft = await this.getDraft(post.id);
-      this.currentSequence = draft.draft_sequence + 1;
+
+      const sequence = draft.draft_sequence + 1;
+
       await Draft.save(
         await this.draftKeyFor(null, post),
         this.currentSequence,
@@ -208,6 +248,9 @@ export default class InlineComposerService extends Service {
         this.messageBus.clientId,
         { forceSave: this.draftForceSave }
       );
+
+      this.currentSequence = sequence;
+
       this.#cache[post.id] = {
         content: value,
         draft_sequence: this.currentSequence,
@@ -256,7 +299,7 @@ export default class InlineComposerService extends Service {
                   action: async () => {
                     this.draftForceSave = true;
                     try {
-                      const success = await this.#performSaveDraft(
+                      const success = await this.saveDraft(
                         value,
                         post,
                         showToast
