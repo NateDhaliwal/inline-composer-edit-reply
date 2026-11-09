@@ -7,7 +7,7 @@ export default apiInitializer((api) => {
   const inlineComposer = api.container.lookup("service:inline-composer");
   api.modifyClass("route:topic.from-params", (Superclass) => {
     return class extends Superclass {
-      setupController(controller, params) {
+      async setupController(controller, params) {
         const topic = params._nested?.topic || this.modelFor("topic"); // For nested topics as well
 
         if (topic?.draft) {
@@ -22,8 +22,8 @@ export default apiInitializer((api) => {
             if (params._nested?.topic) {
               params._nested.topic.draft = null;
             }
-
-            inlineComposer.startEditing(draftData.postId);
+            console.log(draftData.postId);
+            await inlineComposer.startEditing(draftData.postId);
           }
         }
 

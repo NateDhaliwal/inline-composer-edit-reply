@@ -63,6 +63,8 @@ export default class InlineComposerService extends Service {
     this.draftForceSave = false;
     this.conflict = false;
 
+    console.log(postId, this.post.id);
+
     if (!(this.post && postId !== this.post.id)) {
       this.post = null;
     }
@@ -191,6 +193,7 @@ export default class InlineComposerService extends Service {
     try {
       while (this.#draftQueue.length > 0) {
         const data = this.#draftQueue[0];
+        console.log(data);
         try {
           const result = await this.#performSaveDraft(
             data.value,
@@ -233,6 +236,7 @@ export default class InlineComposerService extends Service {
 
     try {
       let draft = await this.getDraft(post.id);
+      console.log(showToast);
 
       const sequence = draft.draft_sequence + 1;
 
@@ -251,6 +255,8 @@ export default class InlineComposerService extends Service {
         draft_sequence: this.currentSequence,
         saved: true,
       };
+
+      console.log(showToast);
 
       if (showToast) {
         // The user clicked the 'Save Draft' button
