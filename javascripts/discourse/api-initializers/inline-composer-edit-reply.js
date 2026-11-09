@@ -1,6 +1,6 @@
 import { apiInitializer } from "discourse/lib/api";
-import InlineComposer from "../components/inline-composer";
-import InlineComposerEditButton from "../components/inline-composer-edit-button";
+import InlineComposer from "../components/inline-composer.gjs";
+import InlineComposerEditButton from "../components/inline-composer-edit-button.gjs";
 
 export default apiInitializer((api) => {
   const siteSettings = api.container.lookup("service:site-settings");
